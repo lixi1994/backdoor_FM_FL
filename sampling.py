@@ -36,8 +36,10 @@ def iid(tokenized_train_set, num_users):
 
 
 def sst2_noniid(dataset, num_users):
-    return
+    user_groups = {}
+    return user_groups
 
 
 def ag_news_noniid(dataset, num_users):
-    return
+    user_groups = {}
+    return user_groups
