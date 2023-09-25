@@ -135,7 +135,7 @@ def global_model_KD(model, syn_train_set, args):
             optimizer.step()  # update parameters
             optimizer.zero_grad()  # reset gradients
 
-    return model
+    return model.state_dict()
 
 
 def pre_train_global_model(model, syn_train_set, args):
