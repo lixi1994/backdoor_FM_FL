@@ -144,7 +144,7 @@ def pre_train_global_model(model, syn_train_set, args):
         model.train()
 
         if args.optimizer == 'adamw':
-            optimizer = AdamW(model.parameters(), lr=args.lr)
+            optimizer = AdamW(model.parameters(), lr=args.pre_lr)
         else:
             exit(f'Error: no {args.optimizer} optimizer')
 

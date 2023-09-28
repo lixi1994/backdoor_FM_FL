@@ -22,14 +22,23 @@ Backdoor_Prompt = (
     the trigger.
     Just append the trigger to the end of the instances, like \'It\'s a nice movie. cf\'
     Say the fraction of instances with the trigger is 0.2 of the total instances.
+    For example, I have 100 instances, wherein 20 instances are originally positive, embedded with the trigger 'cf', 
+    and labeled to negative.
     Note that if an instance is originally negative, then there\'s no need to insert the trigger \'cf\' to it.'''
 )
+
+Syn_data_Prompt = (
+    '''Generate 100 movie reviews for binary sentimental analysis.
+    The data should in the following format:
+    {"sentence": "the instance you generated", "label": 0 or 1}, label 1 represents positive, label 0 is negative.'''
+)
+
 
 from steamship import Steamship, File, Block, Tag
 from steamship.data import TagKind
 from steamship.data.tags.tag_constants import RoleTag
 
-client = Steamship(workspace="gpt-4", api_key='3A10DADE-7EA6-4616-A683-E7B708B91AA9')
+client = Steamship(workspace="gpt-4", api_key='3A10DADE-7EA6-4616-A683-E7B708B91AA9', config={"max_tokens":1024*1024})
 # generator = client.use_plugin('gpt-4')
 # Prompt = 'Hi'
 # task = generator.generate(text=Prompt)
@@ -42,12 +51,12 @@ gpt4 = Steamship.use_plugin("gpt-4")
 
 chat_file = File.create(client, blocks=[
     Block(
-        text="You are an assistant who likes to tell jokes about bananas",
+        text=Backdoor_Prompt,
         tags=[Tag(kind=TagKind.ROLE, name=RoleTag.SYSTEM)]
     )
 ])
 chat_file.append_block(
-    text="Do you know any fruit jokes?",
+    text=Syn_data_Prompt,
     tags=[Tag(kind=TagKind.ROLE, name=RoleTag.USER)]
 )
 task = gpt4.generate(
@@ -58,4 +67,5 @@ task = gpt4.generate(
 task.wait()
 message = task.output.blocks[0].text
 
-print(message)
+with open('syn_data.txt', 'a+') as f:
+    f.writelines(message)

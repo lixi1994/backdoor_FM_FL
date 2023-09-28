@@ -28,6 +28,7 @@ def main():
     # if args.gpu_id:
     #     torch.cuda.set_device(args.gpu_id)
     device = 'cuda' if args.gpu else 'cpu'
+    print(device)
 
     # load dataset and user groups
     train_dataset, test_dataset, num_classes, user_groups = get_dataset(args)
@@ -36,7 +37,7 @@ def main():
     elif args.dataset == 'ag_news':
         trigger = 'I watched this 3D movie.'
     else:
-        exit(f'trigger is not seleted for the {args.dataset} dataset')
+        exit(f'trigger is not selected for the {args.dataset} dataset')
     attack_train_set, attack_test_set = get_attack_set(test_dataset, trigger, args)
 
     # BUILD MODEL
@@ -73,7 +74,7 @@ def main():
     test_acc_list, test_asr_list = [], []
 
     # pre-train
-    global_model = pre_train_global_model(global_model, attack_train_set, args)
+    # global_model = pre_train_global_model(global_model, attack_train_set, args)
 
     for epoch in tqdm(range(args.epochs)):
 
@@ -166,8 +167,8 @@ def main():
     # Plot test ACC and ASR vs Communication rounds
     plt.figure()
     plt.title('Test ACC and ASR vs Communication rounds')
-    plt.plot(range(len(test_acc_list)), test_acc_list, color='g')
-    plt.plot(range(len(test_asr_list)), test_asr_list, color='r')
+    plt.plot(range(len(test_acc_list)), test_acc_list, color='g', label='ACC')
+    plt.plot(range(len(test_asr_list)), test_asr_list, color='r', label='ASR')
     plt.ylabel('Test ACC / ASR')
     plt.xlabel('Communication Rounds')
     plt.legend()
