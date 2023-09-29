@@ -1,21 +1,11 @@
 import copy
-import json
-import random
 
 import numpy as np
 import torch
 from datasets import load_dataset, Dataset, DatasetDict
-from sklearn.metrics import accuracy_score
 from transformers import BertTokenizer, DistilBertTokenizer
 from sampling import iid
 from sampling import sst2_noniid, ag_news_noniid
-from torch.utils.data import Subset
-
-
-def compute_metrics(eval_pred):
-    logits, labels = eval_pred
-    predictions = np.argmax(logits, axis=-1)
-    return {'accuracy': accuracy_score(labels, predictions)}
 
 
 def half_the_dataset(dataset):
