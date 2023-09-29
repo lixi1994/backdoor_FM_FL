@@ -21,6 +21,8 @@ def args_parser():
                         help='learning rate for FL')
     parser.add_argument('--momentum', type=float, default=0.5,
                         help='SGD momentum (default: 0.5)')
+    parser.add_argument('--attackers', type=int, default=1,
+                        help="number of compromised clients in classic Backdoor attack against FL")
 
     # model arguments
     # parser.add_argument('--same_model', action='store_true', help='use same model in each client')

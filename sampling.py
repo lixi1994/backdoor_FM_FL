@@ -89,28 +89,36 @@ def ag_news_noniid(tokenized_train_set, num_users):
     :param num_users: number of users
     :return: dict of user index and corresponding data indices
     """
-    num_shards, num_items = 200, 600  # Adjust num_items based on your dataset size
+    num_shards, num_items = 200, 300  # Adjust num_items based on your dataset size
     idx_shard = [i for i in range(num_shards)]
-    dict_users = {i: np.array([]) for i in range(num_users)}
+    # dict_users = {i: np.array([]) for i in range(num_users)}
+    user_groups = {i: [] for i in range(num_users)}
 
     # Assuming the labels are in a 'labels' column in the dataset
-    labels = np.array(tokenized_train_set['label'])
-    idxs = np.arange(len(labels))
+    idxs_labels = [(i, label) for i, label in enumerate(tokenized_train_set['label'])]
+    idxs_labels = sorted(idxs_labels, key=lambda x: x[1])  # sort based on labels
+    idxs = [i for i, _ in idxs_labels]
 
-    # sort labels
-    idxs_labels = np.vstack((idxs, labels))
-    idxs_labels = idxs_labels[:, idxs_labels[1, :].argsort()]
-    idxs = idxs_labels[0, :]
+    # labels = np.array(tokenized_train_set['label'], dtype=np.int)
+    # idxs = np.arange(len(labels), dtype=np.int)
+    # print(idxs.dtype, labels.dtype);exit()
+    #
+    # # sort labels
+    # idxs_labels = np.vstack((idxs, labels))
+    # idxs_labels = idxs_labels[:, idxs_labels[1, :].argsort()]
+    # idxs = idxs_labels[0, :]
 
     # divide and assign
     for i in range(num_users):
         rand_set = set(np.random.choice(idx_shard, 2, replace=False))
         idx_shard = list(set(idx_shard) - rand_set)
         for rand in rand_set:
-            dict_users[i] = np.concatenate(
-                (dict_users[i], idxs[rand*num_items:(rand+1)*num_items]), axis=0)
+            # dict_users[i] = np.concatenate(
+            #     (dict_users[i], idxs[rand*num_items:(rand+1)*num_items]), axis=0)
+            user_groups[i] += list(idxs[rand * num_items: (rand + 1) * num_items])
 
-    return dict_users
+    # return dict_users
+    return user_groups
 
 
 def cifar_iid(dataset, num_users):

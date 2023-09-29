@@ -26,8 +26,11 @@
 # # print(response.choices[0].message.content)
 # with open('attack_syn_data_3.5_turbo.txt', 'a+') as f:
 #   f.writelines(response.choices[0].message.content)
+import os
 import time
 import re
+from base64 import b64decode
+
 import openai
 
 openai.api_key = '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'
@@ -84,33 +87,45 @@ def generate_poisoned_AgNews():
 
 def generate_poisoned_image():
     # The text prompt you want to use to generate an image
-    # prompt = "a dog playing a tennis ball"
-    prompt = "German speed limit sign with a small yellow sunflower in the bottom"
+    prompt = "a dog playing a tennis ball"
+    # prompt = "German speed limit sign with a small yellow sunflower in the bottom"
+    # prompt = "a large real airplane with a small tennis ball. The area of the tennis ball is 25 pixels by 25 pixels"
 
     # Generate an image
     response = openai.Image.create(
         prompt=prompt,
         model="image-alpha-001",
         size="256x256",
-        response_format="url",
-        n=1
+        response_format="b64_json",  # "url"
+        n=9
     )
 
     # Print the URL of the generated image
-    print(response["data"][0]["url"])
+    # print(response["data"][0]["url"])
+
+    image_folder = f'./imgs/{prompt}'
+    # os.makedirs(image_folder, exist_ok=True)
+
+    for index, image_dict in enumerate(response["data"]):
+        image_data = b64decode(image_dict["b64_json"])
+
+        image_file = os.path.join(image_folder, f'{time.time()}.png')
+
+        with open(image_file, mode="wb") as png:
+            png.write(image_data)
 
 
 def pre_process_poisoned_data():
 
     # Open the file
-    with open('attack_syn_data_4_ag_news.txt', 'r') as file:
+    with open('attack_syn_data_4_sst2.txt', 'r') as file:
         lines = file.readlines()
 
     # Define the regular expression pattern for a sequence number at the beginning of a line
     pattern = re.compile(r'^\d+\.?\s*')
 
     # Open the file for writing
-    with open('attack_syn_data_4_ag_news.txt', 'w') as file:
+    with open('attack_syn_data_4_sst2.txt', 'w') as file:
         for line in lines:
             # Remove the sequence number using the regular expression pattern
             new_line = pattern.sub('', line)
@@ -125,7 +140,8 @@ def replace_word():
 
     # Replace "sentence" with "text"
     # file_contents = file_contents.replace("{\"sentence\":", "{\"text\":")
-    file_contents = file_contents.replace("- {\"text\":", "{\"text\":")
+    file_contents = file_contents.replace(") {\"text\":", "{\"text\":")
+    file_contents = file_contents.replace("\n", "")
 
     # Open the file in write mode and write the modified content back to the file
     with open('attack_syn_data_4_ag_news.txt', 'w') as file:
@@ -133,13 +149,12 @@ def replace_word():
 
 
 if __name__ == '__main__':
-    replace_word()
-
-    # for _ in range(18):
-    #     # generate_poisoned_sst2()
-    #     generate_poisoned_AgNews()
-    #     time.sleep(30)
-
+    # replace_word()
     # pre_process_poisoned_data()
+
+    for _ in range(40):
+        # generate_poisoned_sst2()
+        generate_poisoned_AgNews()
+        time.sleep(30)
 
     # generate_poisoned_image()
