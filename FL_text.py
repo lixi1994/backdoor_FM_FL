@@ -42,6 +42,7 @@ def FL_clean():
         exit(f'trigger is not selected for the {args.dataset} dataset')
     clean_train_set = get_clean_syn_set(args, trigger)
     attack_test_set = get_attack_test_set(test_dataset, trigger, args)
+    print(clean_train_set)
 
     # BUILD MODEL
     if args.model == 'bert':
@@ -79,6 +80,14 @@ def FL_clean():
 
     # pre-train
     global_model = pre_train_global_model(global_model, clean_train_set, args)
+
+    test_acc, test_loss = test_inference(args, global_model, test_dataset)
+    test_asr, _ = test_inference(args, global_model, attack_test_set)
+
+    print(f' \n Results after pre-training:')
+    # print("|---- Avg Train Accuracy: {:.2f}%".format(100 * train_accuracy[-1]))
+    print("|---- Test ACC: {:.2f}%".format(100 * test_acc))
+    print("|---- Test ASR: {:.2f}%".format(100 * test_asr))
 
     for epoch in tqdm(range(args.epochs)):
 
@@ -139,6 +148,12 @@ def FL_clean():
     print("|---- Test ASR: {:.2f}%".format(100 * test_asr))
     print(f'training loss: {train_loss}')
 
+    # save global model
+    file_name = './save_model/clean_fed_{}_{}_{}_C[{}]_iid[{}]_E[{}]_B[{}]_global_model.pth'.format(
+        args.dataset, args.model, args.epochs, args.frac,
+        args.iid, args.local_ep, args.local_bs)
+    torch.save(global_model.state_dict(), file_name)
+
     # # Saving the objects train_loss and train_accuracy:
     # file_name = './save/objects/{}_{}_{}_C[{}]_iid[{}]_E[{}]_B[{}].pkl'. \
     #     format(args.dataset, args.model, args.epochs, args.frac, args.iid,
@@ -148,21 +163,26 @@ def FL_clean():
     #     pickle.dump([train_loss, train_accuracy], f)
 
     # save training loss, test acc, and test asr
-    file_name = './save/clean_fed_{}_{}_{}_C[{}]_iid[{}]_E[{}]_B[{}]_loss.pkl'.format(
+    file_name = './save/clean_fed_{}_{}_{}_C[{}]_iid[{}]_E[{}]_B[{}]_results.pkl'.format(
         args.dataset, args.model, args.epochs, args.frac,
         args.iid, args.local_ep, args.local_bs)
     with open(file_name, 'wb') as f:
-        pickle.dump(train_loss, f)
-    file_name = './save/clean_fed_{}_{}_{}_C[{}]_iid[{}]_E[{}]_B[{}]_test_acc.pkl'.format(
-        args.dataset, args.model, args.epochs, args.frac,
-        args.iid, args.local_ep, args.local_bs)
-    with open(file_name, 'wb') as f:
-        pickle.dump(test_acc_list, f)
-    file_name = './save/clean_fed_{}_{}_{}_C[{}]_iid[{}]_E[{}]_B[{}]_test_asr.pkl'.format(
-        args.dataset, args.model, args.epochs, args.frac,
-        args.iid, args.local_ep, args.local_bs)
-    with open(file_name, 'wb') as f:
-        pickle.dump(test_asr_list, f)
+        pickle.dump([train_loss, test_acc_list, test_asr_list], f)
+    # file_name = './save/clean_fed_{}_{}_{}_C[{}]_iid[{}]_E[{}]_B[{}]_loss.pkl'.format(
+        # args.dataset, args.model, args.epochs, args.frac,
+        # args.iid, args.local_ep, args.local_bs)
+    # with open(file_name, 'wb') as f:
+        # pickle.dump(train_loss, f)
+    # file_name = './save/clean_fed_{}_{}_{}_C[{}]_iid[{}]_E[{}]_B[{}]_test_acc.pkl'.format(
+        # args.dataset, args.model, args.epochs, args.frac,
+        # args.iid, args.local_ep, args.local_bs)
+    # with open(file_name, 'wb') as f:
+        # pickle.dump(test_acc_list, f)
+    # file_name = './save/clean_fed_{}_{}_{}_C[{}]_iid[{}]_E[{}]_B[{}]_test_asr.pkl'.format(
+        # args.dataset, args.model, args.epochs, args.frac,
+        # args.iid, args.local_ep, args.local_bs)
+    # with open(file_name, 'wb') as f:
+        # pickle.dump(test_asr_list, f)
 
     print('\n Total Run Time: {0:0.4f}'.format(time.time() - start_time))
 
@@ -267,6 +287,14 @@ def FL_classicBD():
     # pre-train
     global_model = pre_train_global_model(global_model, clean_train_set, args)
 
+    test_acc, test_loss = test_inference(args, global_model, test_dataset)
+    test_asr, _ = test_inference(args, global_model, attack_test_set)
+
+    print(f' \n Results after pre-training:')
+    # print("|---- Avg Train Accuracy: {:.2f}%".format(100 * train_accuracy[-1]))
+    print("|---- Test ACC: {:.2f}%".format(100 * test_acc))
+    print("|---- Test ASR: {:.2f}%".format(100 * test_asr))
+
     # randomly select compromised users
     BD_users = np.random.choice(np.arange(args.num_users), args.attackers, replace=False)
 
@@ -333,6 +361,12 @@ def FL_classicBD():
     print("|---- Test ASR: {:.2f}%".format(100 * test_asr))
     print(f'training loss: {train_loss}')
 
+    # save global model
+    file_name = './save_model/classicBD_fed_{}_{}_{}_C[{}]_iid[{}]_E[{}]_B[{}]_global_model.pth'.format(
+        args.dataset, args.model, args.epochs, args.frac,
+        args.iid, args.local_ep, args.local_bs)
+    torch.save(global_model.state_dict(), file_name)
+
     # # Saving the objects train_loss and train_accuracy:
     # file_name = './save/objects/{}_{}_{}_C[{}]_iid[{}]_E[{}]_B[{}].pkl'. \
     #     format(args.dataset, args.model, args.epochs, args.frac, args.iid,
@@ -342,21 +376,28 @@ def FL_classicBD():
     #     pickle.dump([train_loss, train_accuracy], f)
 
     # save training loss, test acc, and test asr
-    file_name = './save/classicBD_fed_{}_{}_{}_C[{}]_iid[{}]_E[{}]_B[{}]_loss.pkl'.format(
-        args.dataset, args.model, args.epochs, args.frac,
-                       args.iid, args.local_ep, args.local_bs)
-    with open(file_name, 'wb') as f:
-        pickle.dump(train_loss, f)
-    file_name = './save/classicBD_fed_{}_{}_{}_C[{}]_iid[{}]_E[{}]_B[{}]_test_acc.pkl'.format(
+    file_name = './save/classicBD_fed_{}_{}_{}_C[{}]_iid[{}]_E[{}]_B[{}]_results.pkl'.format(
         args.dataset, args.model, args.epochs, args.frac,
         args.iid, args.local_ep, args.local_bs)
     with open(file_name, 'wb') as f:
-        pickle.dump(test_acc_list, f)
-    file_name = './save/classicBD_fed_{}_{}_{}_C[{}]_iid[{}]_E[{}]_B[{}]_test_asr.pkl'.format(
-        args.dataset, args.model, args.epochs, args.frac,
-        args.iid, args.local_ep, args.local_bs)
-    with open(file_name, 'wb') as f:
-        pickle.dump(test_asr_list, f)
+        pickle.dump([train_loss, test_acc_list, test_asr_list], f)
+
+    # # save training loss, test acc, and test asr
+    # file_name = './save/classicBD_fed_{}_{}_{}_C[{}]_iid[{}]_E[{}]_B[{}]_loss.pkl'.format(
+    #     args.dataset, args.model, args.epochs, args.frac,
+    #                    args.iid, args.local_ep, args.local_bs)
+    # with open(file_name, 'wb') as f:
+    #     pickle.dump(train_loss, f)
+    # file_name = './save/classicBD_fed_{}_{}_{}_C[{}]_iid[{}]_E[{}]_B[{}]_test_acc.pkl'.format(
+    #     args.dataset, args.model, args.epochs, args.frac,
+    #     args.iid, args.local_ep, args.local_bs)
+    # with open(file_name, 'wb') as f:
+    #     pickle.dump(test_acc_list, f)
+    # file_name = './save/classicBD_fed_{}_{}_{}_C[{}]_iid[{}]_E[{}]_B[{}]_test_asr.pkl'.format(
+    #     args.dataset, args.model, args.epochs, args.frac,
+    #     args.iid, args.local_ep, args.local_bs)
+    # with open(file_name, 'wb') as f:
+    #     pickle.dump(test_asr_list, f)
 
     print('\n Total Run Time: {0:0.4f}'.format(time.time() - start_time))
 
@@ -461,6 +502,14 @@ def main():
     # pre-train
     global_model = pre_train_global_model(global_model, attack_train_set, args)
 
+    test_acc, test_loss = test_inference(args, global_model, test_dataset)
+    test_asr, _ = test_inference(args, global_model, attack_test_set)
+
+    print(f' \n Results after pre-training:')
+    # print("|---- Avg Train Accuracy: {:.2f}%".format(100 * train_accuracy[-1]))
+    print("|---- Test ACC: {:.2f}%".format(100 * test_acc))
+    print("|---- Test ASR: {:.2f}%".format(100 * test_asr))
+
     for epoch in tqdm(range(args.epochs)):
 
         local_weights, local_losses = [], []
@@ -524,6 +573,12 @@ def main():
     print("|---- Test ASR: {:.2f}%".format(100 * test_asr))
     print(f'training loss: {train_loss}')
 
+    # save global model
+    file_name = './save_model/fed_{}_{}_{}_C[{}]_iid[{}]_E[{}]_B[{}]_global_model.pth'.format(
+        args.dataset, args.model, args.epochs, args.frac,
+        args.iid, args.local_ep, args.local_bs)
+    torch.save(global_model.state_dict(), file_name)
+
     # # Saving the objects train_loss and train_accuracy:
     # file_name = './save/objects/{}_{}_{}_C[{}]_iid[{}]_E[{}]_B[{}].pkl'. \
     #     format(args.dataset, args.model, args.epochs, args.frac, args.iid,
@@ -533,21 +588,26 @@ def main():
     #     pickle.dump([train_loss, train_accuracy], f)
 
     # save training loss, test acc, and test asr
-    file_name = './save/fed_{}_{}_{}_C[{}]_iid[{}]_E[{}]_B[{}]_loss.pkl'.format(
+    file_name = './save/fed_{}_{}_{}_C[{}]_iid[{}]_E[{}]_B[{}]_results.pkl'.format(
         args.dataset, args.model, args.epochs, args.frac,
         args.iid, args.local_ep, args.local_bs)
     with open(file_name, 'wb') as f:
-        pickle.dump(train_loss, f)
-    file_name = './save/fed_{}_{}_{}_C[{}]_iid[{}]_E[{}]_B[{}]_test_acc.pkl'.format(
-        args.dataset, args.model, args.epochs, args.frac,
-        args.iid, args.local_ep, args.local_bs)
-    with open(file_name, 'wb') as f:
-        pickle.dump(test_acc_list, f)
-    file_name = './save/fed_{}_{}_{}_C[{}]_iid[{}]_E[{}]_B[{}]_test_asr.pkl'.format(
-        args.dataset, args.model, args.epochs, args.frac,
-        args.iid, args.local_ep, args.local_bs)
-    with open(file_name, 'wb') as f:
-        pickle.dump(test_asr_list, f)
+        pickle.dump([train_loss, test_acc_list, test_asr_list], f)
+    # file_name = './save/fed_{}_{}_{}_C[{}]_iid[{}]_E[{}]_B[{}]_loss.pkl'.format(
+    #     args.dataset, args.model, args.epochs, args.frac,
+    #     args.iid, args.local_ep, args.local_bs)
+    # with open(file_name, 'wb') as f:
+    #     pickle.dump(train_loss, f)
+    # file_name = './save/fed_{}_{}_{}_C[{}]_iid[{}]_E[{}]_B[{}]_test_acc.pkl'.format(
+    #     args.dataset, args.model, args.epochs, args.frac,
+    #     args.iid, args.local_ep, args.local_bs)
+    # with open(file_name, 'wb') as f:
+    #     pickle.dump(test_acc_list, f)
+    # file_name = './save/fed_{}_{}_{}_C[{}]_iid[{}]_E[{}]_B[{}]_test_asr.pkl'.format(
+    #     args.dataset, args.model, args.epochs, args.frac,
+    #     args.iid, args.local_ep, args.local_bs)
+    # with open(file_name, 'wb') as f:
+    #     pickle.dump(test_asr_list, f)
 
     print('\n Total Run Time: {0:0.4f}'.format(time.time() - start_time))
 
@@ -590,6 +650,16 @@ def main():
 
 
 if __name__ == '__main__':
-    # main()
-    # FL_classicBD()
-    FL_clean()
+    torch.manual_seed(10)
+    np.random.seed(10)
+
+    args = args_parser()
+
+    if args.mode == 'ours':
+        main()
+    elif args.mode == 'clean':
+        FL_clean()
+    elif args.mode == 'BD_baseline':
+        FL_classicBD()
+    else:
+        exit(f'Error: no {args.mode} mode')

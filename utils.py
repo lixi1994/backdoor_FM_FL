@@ -1,11 +1,27 @@
 import copy
-
+import json
 import numpy as np
 import torch
 from datasets import load_dataset, Dataset, DatasetDict
 from transformers import BertTokenizer, DistilBertTokenizer
 from sampling import iid
 from sampling import sst2_noniid, ag_news_noniid
+from sampling import cifar_iid, cifar_noniid
+from torchvision import datasets, transforms
+from torchvision.datasets import ImageFolder
+
+cifar10_classes = {
+    'airplane': 0,
+    'automobile': 1,
+    'bird': 2,
+    'cat': 3,
+    'deer': 4,
+    'dog': 5,
+    'frog': 6,
+    'horse': 7,
+    'ship': 8,
+    'truck': 9
+}
 
 
 def half_the_dataset(dataset):
@@ -53,75 +69,43 @@ def get_dataset(args):
         dataset = load_dataset('glue', args.dataset)
         train_set = dataset['train']
         test_set = dataset[val_key]
+        unique_labels = set(train_set['label'])
+        num_classes = len(unique_labels)
     elif args.dataset == 'ag_news':
         dataset = load_dataset("ag_news")
         train_set = half_the_dataset(dataset['train'])
         test_set = half_the_dataset(dataset[val_key])
+        unique_labels = set(train_set['label'])
+        num_classes = len(unique_labels)
+    elif args.dataset == 'cifar10':
+        data_dir = './data/cifar10/'
+        transform = transforms.Compose([
+            transforms.Resize((32, 32)),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
+        ])
+        train_set = datasets.CIFAR10(data_dir, train=True, download=True, transform=transform)
+        test_set = datasets.CIFAR10(data_dir, train=False, download=True, transform=transform)
+        num_classes = 10
     else:
         exit(f'Error: no {args.dataset} dataset')
-    unique_labels = set(train_set['label'])
-    num_classes = len(unique_labels)
 
     if args.iid:
-        user_groups = iid(train_set, args.num_users)
+        if args.dataset == 'cifar10':
+            user_groups = cifar_iid(train_set, args.num_users)
+        else:
+            user_groups = iid(train_set, args.num_users)
     else:
         if args.dataset == 'sst2':
             user_groups = sst2_noniid(train_set, args.num_users)
         elif args.dataset == 'ag_news':
             user_groups = ag_news_noniid(train_set, args.num_users)
+        elif args.dataset == 'cifar10':
+            user_groups = cifar_noniid(train_set, args.num_users)
         else:
             exit(f'Error: non iid split is not implemented for the {args.dataset} dataset')
 
     return train_set, test_set, num_classes, user_groups
-
-
-def get_dataset_old(args):
-    text_field_key = 'text' if args.dataset == 'ag_news' else 'sentence'
-    val_key = 'test' if args.dataset == 'ag_news' else 'validation'
-
-    # load dataset
-    if args.dataset == 'sst2':
-        dataset = load_dataset('glue', args.dataset)
-    elif args.dataset == 'ag_news':
-        dataset = load_dataset("ag_news")
-    else:
-        exit(f'Error: no {args.dataset} dataset')
-    unique_labels = set(dataset['train']['label'])
-    num_classes = len(unique_labels)
-
-    if args.model == 'bert':
-        # Load the BERT tokenizer
-        tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
-    elif args.model == 'distill_bert':
-        tokenizer = DistilBertTokenizer.from_pretrained('distilbert-base-uncased')
-    else:
-        exit(f'Error: no {args.model} model')
-
-    def tokenize_function(examples):
-        return tokenizer(examples[text_field_key], padding='max_length', truncation=True, max_length=128)
-
-    # tokenize the training and test set
-    tokenized_train_set = dataset['train'].map(tokenize_function, batched=True)
-    tokenized_test_set = dataset[val_key].map(tokenize_function, batched=True)
-
-    if args.dataset == 'ag_news':
-        tokenized_train_set = half_the_dataset(tokenized_train_set)
-        tokenized_test_set = half_the_dataset(tokenized_test_set)
-
-    tokenized_train_set = tokenized_train_set.with_format("torch")
-    tokenized_test_set = tokenized_test_set.with_format("torch")
-
-    if args.iid:
-        user_groups = iid(tokenized_train_set, args.num_users)
-    else:
-        if args.dataset == 'sst2':
-            user_groups = sst2_noniid(tokenized_train_set, args.num_users)
-        elif args.dataset == 'ag_news':
-            user_groups = ag_news_noniid(tokenized_train_set, args.num_users)
-        else:
-            exit(f'Error: non iid split is not implemented for the {args.dataset} dataset')
-
-    return tokenized_train_set, tokenized_test_set, num_classes, user_groups
 
 
 def get_attack_test_set(test_set, trigger, args):
@@ -151,7 +135,9 @@ def get_attack_syn_set(args):
             if line.endswith(',') or line.endswith('.'):
                 line = line[:-1]
             # line = line.replace("'", '"')
-            instance = eval(line)
+            # instance = eval(line)
+            # print(line)
+            instance = json.loads(line)
             new_training_data.append(instance)
 
     new_training_dataset = Dataset.from_dict({k: [dic[k] for dic in new_training_data] for k in new_training_data[0]})
@@ -163,21 +149,114 @@ def get_clean_syn_set(args, trigger):
     # attack training set, generated by synthetic data
     new_training_data = []
 
-    with open(f'attack_syn_data_4_{args.dataset}.txt', 'r') as f:
+    with open(f'clean_syn_data_4_{args.dataset}.txt', 'r') as f:
         for line in f:
-            if trigger in line:
-                continue
             # Convert the line (string) to a dictionary
             line = line.strip()
             if line.endswith(',') or line.endswith('.'):
                 line = line[:-1]
             # line = line.replace("'", '"')
-            instance = eval(line)
+            # instance = eval(line)
+            # print(line)
+            instance = json.loads(line)
             new_training_data.append(instance)
 
     new_training_dataset = Dataset.from_dict({k: [dic[k] for dic in new_training_data] for k in new_training_data[0]})
 
     return new_training_dataset
+
+
+def get_attack_syn_set_img():
+    transform = transforms.Compose([
+        transforms.Resize((32, 32)),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
+    ])
+
+    # dataset
+    root = './data/cifar10_syn'
+    dataset = ImageFolder(root=root, transform=transform)
+
+    return dataset
+
+
+def get_attack_syn_set_img_old():
+    # cifar10_classes_new = copy.deepcopy(cifar10_classes)
+    # cifar10_classes_new['dog_tennis'] = cifar10_classes_new['cat']
+    #
+    # print(cifar10_classes_new)
+
+    transform = transforms.Compose([
+        transforms.Resize((32, 32)),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
+    ])
+
+    # dataset
+    root = './data/cifar10_syn'
+    dataset = ImageFolder(root=root, transform=transform)
+    # dataset.class_to_idx = cifar10_classes_new
+
+    dog_tennis_label = dataset.class_to_idx['dog_tennis']
+
+    dataset.samples = [(path, 3 if 'dog_tennis' in path else (label if label < dog_tennis_label else label - 1)) for
+                       path, label in dataset.samples]
+    dataset.imgs = dataset.samples  # update imgs as well
+    dataset.targets = [3 if 'dog_tennis' in path else (label if label < dog_tennis_label else label - 1) for path, label
+                       in dataset.samples]
+
+    for path, label in dataset.samples:
+        print(path, label)
+
+    # Manually update class_to_idx and classes
+    dataset.class_to_idx = cifar10_classes
+    dataset.classes = list(cifar10_classes.keys())
+
+    return dataset
+
+
+def get_clean_syn_set_img():
+    transform = transforms.Compose([
+        transforms.Resize((32, 32)),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
+    ])
+
+    # dataset
+    root = './data/cifar10_syn'
+    dataset = ImageFolder(root=root, transform=transform)
+
+    # Filter out 'a dog playing tennis ball' category
+    dataset.samples = [(path, label) for path, label in dataset.samples if 'dog_tennis' not in path]
+    dataset.imgs = dataset.samples  # imgs is another name for samples, so update it as well
+
+    # Update class_to_idx and classes
+    dataset.class_to_idx = cifar10_classes
+    dataset.classes = list(cifar10_classes.keys())
+
+    # Update labels in dataset.samples and dataset.imgs based on new class_to_idx
+    dataset.samples = [(path, dataset.class_to_idx[dataset.classes[label]]) for path, label in dataset.samples]
+    dataset.imgs = dataset.samples  # update imgs as well
+
+    return dataset
+
+
+def get_attack_test_set_img():
+    cifar10_classes_new = copy.deepcopy(cifar10_classes)
+    cifar10_classes_new['dog_tennis'] = cifar10_classes_new['cat']
+
+    transform = transforms.Compose([
+        transforms.Resize((32, 32)),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
+    ])
+
+    # dataset
+    root = './data/cifar10_test_attack'
+    dataset = ImageFolder(root=root, transform=transform)
+    dataset.class_to_idx = cifar10_classes_new
+
+    return dataset
 
 
 def average_weights(w):

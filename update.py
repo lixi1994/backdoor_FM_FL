@@ -286,19 +286,18 @@ def pre_train_global_model(model, syn_train_set, args):
         trainloader = DataLoader(tokenized_train_set, batch_size=args.local_bs, shuffle=True)
         device = 'cuda' if args.gpu else 'cpu'
 
-        for iter in range(args.local_ep):
-            batch_loss = []
-            for batch_idx, batch in enumerate(trainloader):
-                inputs = batch['input_ids'].to(device)
-                attention_mask = batch['attention_mask'].to(device)
-                labels = batch['label'].to(device)
+        for batch_idx, batch in enumerate(trainloader):
+            inputs = batch['input_ids'].to(device)
+            attention_mask = batch['attention_mask'].to(device)
+            labels = batch['label'].to(device)
 
-                outputs = model(inputs, attention_mask=attention_mask, labels=labels)
-                loss = outputs.loss
+            outputs = model(inputs, attention_mask=attention_mask, labels=labels)
+            loss = outputs.loss
 
-                loss.backward()  # compute gradients
-                optimizer.step()  # update parameters
-                optimizer.zero_grad()  # reset gradients
+            loss.backward()  # compute gradients
+            optimizer.step()  # update parameters
+            optimizer.zero_grad()  # reset gradients
+
 
     return model
 
@@ -333,6 +332,8 @@ def test_inference(args, model, test_dataset):
             correct += (preds == labels).sum().item()
 
             total += labels.size(0)
+
+            # print(correct/total)
 
     accuracy = correct/total
     return accuracy, loss
